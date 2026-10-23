@@ -1,3 +1,22 @@
-flask
-flask-sqlalchemy
-gunicorn
+# Core application
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-WTF==1.2.1
+Flask-Login==0.6.3
+Flask-Limiter==3.8.0
+WTForms==3.2.2
+email-validator==2.2.0
+python-dotenv==1.0.1
+gunicorn==23.0.0
+
+# Production database driver (PostgreSQL / Supabase). Harmless to install for
+# local SQLite development.
+psycopg[binary]==3.2.3
+
+# Production object storage (Supabase). Imported lazily; only required when
+# STORAGE_BACKEND=supabase.
+supabase==2.9.1
+
+# Testing
+pytest==8.3.3

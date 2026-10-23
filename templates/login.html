@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Log in — Peer Library{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="glass-panel">
+            <h1 class="h3 fw-bold mb-4 text-center">Welcome back</h1>
+            <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+                {{ form.csrf_token }}
+                <div class="mb-3">
+                    {{ form.email.label(class="form-label") }}
+                    {{ form.email(class="form-control", autocomplete="email") }}
+                    {% for e in form.email.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    {{ form.password.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.password(class="form-control", autocomplete="current-password", id="password") }}
+                        <button class="btn btn-outline-secondary toggle-password" type="button"
+                            data-target="password" aria-label="Show password">
+                            <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    {% for e in form.password.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                <button type="submit" class="btn btn-human w-100">Log in</button>
+            </form>
+            <p class="text-center text-muted small mt-3 mb-0">
+                No account? <a href="{{ url_for('auth.register') }}">Sign up</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

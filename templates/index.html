@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Explore — Peer Library{% endblock %}
+
+{% macro resource_card(r) %}
+{% set pf = r.primary_file %}
+<div class="col-sm-6 col-lg-4">
+    <article class="card-snippet h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <span class="badge badge-type text-uppercase">{{ r.resource_type }}</span>
+            {% if pf %}
+            <span class="small text-muted" title="Attachment">
+                <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+                {{ (pf.mime_type or 'file').split('/')[-1] | upper }}
+            </span>
+            {% endif %}
+        </div>
+        <h2 class="h5 mb-1">
+            <a class="stretched-link resource-title" href="{{ url_for('main.resource_detail', resource_id=r.id) }}">{{ r.title }}</a>
+        </h2>
+        <p class="mb-2 text-muted small">
+            <i class="fa-solid fa-user-graduate me-1" aria-hidden="true"></i>{{ r.uploader_name }}
+            {% if r.subject %}· <i class="fa-solid fa-book me-1" aria-hidden="true"></i>{{ r.subject }}{% endif %}
+        </p>
+        <p class="card-text flex-grow-1">{{ (r.description[:160] ~ ('…' if r.description|length > 160 else '')) }}</p>
+        <div class="d-flex justify-content-between align-items-center mt-2 small text-muted">
+            <span><i class="fa-regular fa-clock me-1" aria-hidden="true"></i>{{ r.created_at.strftime('%d %b %Y') if r.created_at else '' }}</span>
+            {% if r.download_count %}<span><i class="fa-solid fa-download me-1" aria-hidden="true"></i>{{ r.download_count }}</span>{% endif %}
+        </div>
+    </article>
+</div>
+{% endmacro %}
+
+{% block content %}
+<header class="mb-4">
+    <h1 class="h2 fw-bold mb-1">Discover study resources</h1>
+    <p class="text-muted mb-0">Notes, past papers, syllabi and more — shared by students like you.</p>
+</header>
+
+<form class="filter-bar glass-panel p-3 mb-4" method="GET" action="{{ url_for('main.index') }}" id="filterForm">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md">
+            <label for="q" class="form-label small mb-1">Search</label>
+            <input type="search" class="form-control" id="q" name="q" value="{{ filters.query or '' }}"
+                placeholder="Title, subject, author…">
+        </div>
+        <div class="col-6 col-md-auto">
+            <label for="type" class="form-label small mb-1">Type</label>
+            <select class="form-select" id="type" name="type">
+                <option value="">All types</option>
+                {% for t in resource_types %}
+                <option value="{{ t }}" {% if filters.resource_type == t %}selected{% endif %}>{{ t|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-auto">
+            <label for="subject" class="form-label small mb-1">Subject</label>
+            <input type="text" class="form-control" id="subject" name="subject" value="{{ filters.subject or '' }}"
+                placeholder="Any">
+        </div>
+        <div class="col-6 col-md-auto">
+            <label for="sort" class="form-label small mb-1">Sort</label>
+            <select class="form-select" id="sort" name="sort">
+                <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
+                <option value="oldest" {% if filters.sort == 'oldest' %}selected{% endif %}>Oldest</option>
+                <option value="downloads" {% if filters.sort == 'downloads' %}selected{% endif %}>Most downloaded</option>
+                <option value="title" {% if filters.sort == 'title' %}selected{% endif %}>Title A–Z</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-auto">
+            <button type="submit" class="btn btn-human w-100">
+                <i class="fa-solid fa-filter me-1" aria-hidden="true"></i> Apply
+            </button>
+        </div>
+    </div>
+</form>
+
+<div id="results-status" class="visually-hidden" aria-live="polite"></div>
+
+<div id="results-grid" class="row g-4">
+    {% if resources %}
+    {% for r in resources %}
+    {{ resource_card(r) }}
+    {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5 glass-panel">
+            <div class="mb-3 text-muted display-5"><i class="fa-regular fa-folder-open" aria-hidden="true"></i></div>
+            <h2 class="h4">No resources found</h2>
+            <p class="text-muted mb-3">
+                {% if filters.query or filters.resource_type or filters.subject %}
+                Try a different search or clear your filters.
+                {% else %}
+                Be the first to contribute a resource to the library.
+                {% endif %}
+            </p>
+            <a href="{{ url_for('main.contribute') }}" class="btn btn-human">
+                <i class="fa-solid fa-upload me-1" aria-hidden="true"></i> Contribute a resource
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if pagination and pagination.pages > 1 %}
+<nav class="mt-4" aria-label="Resource pages" id="pagination-nav">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num, **filters_qs) }}">Previous</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        </li>
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num, **filters_qs) }}">Next</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

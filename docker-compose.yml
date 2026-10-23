@@ -1,8 +1,26 @@
-version: '3.8'
-
+# Local development / self-hosted convenience.
+#
+# This default uses local SQLite + local file storage, kept in named volumes so
+# data survives container rebuilds. For production use Supabase (PostgreSQL +
+# Storage) by providing a .env with DATABASE_URL and the SUPABASE_* values and
+# setting STORAGE_BACKEND=supabase — see SUPABASE_SETUP.md.
 services:
   web:
     build: .
     ports:
       - "5000:5000"
-    restart: always
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fallbacks if .env is absent; override there for real deployments.
+      FLASK_ENV: ${FLASK_ENV:-development}
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-local}
+    volumes:
+      - pl_instance:/app/instance
+      - pl_uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  pl_instance:
+  pl_uploads:

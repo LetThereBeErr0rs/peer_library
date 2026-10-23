@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} — Peer Library{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="display-1 fw-bold text-primary">{{ code }}</div>
+    <p class="lead text-muted">{{ message }}</p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-human mt-2">
+        <i class="fa-solid fa-house me-1" aria-hidden="true"></i> Back to catalogue
+    </a>
+</div>
+{% endblock %}
