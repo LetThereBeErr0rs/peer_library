@@ -17,23 +17,30 @@ remote resources and wiring the environment.
 
 ## 2. Get the connection information
 
-In the project dashboard:
+In your Supabase project dashboard:
 
 - **Project URL & keys** — *Project Settings → API*:
   - `Project URL` → `SUPABASE_URL`
   - `service_role` secret key → `SUPABASE_SERVICE_KEY`
     (server-side only — it bypasses Row Level Security; **never** expose it to
     the browser or commit it).
-- **Database connection string** — *Project Settings → Database → Connection
-  string*. Use the connection-pooling (pgBouncer) URI for web apps. It looks
-  like:
+- **Database connection string** — Click **Connect** in the top navigation bar (or *Project Settings → Database*):
+  - **Option A: Direct Connection (Port 5432) — Preferred when supported:**
+    If your deployment environment supports direct outbound IPv6 traffic (or you have the Supabase IPv4 add-on), select **Direct connection** (port `5432`):
+    ```
+    postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
+    ```
+  - **Option B: Session Pooler (Port 5432) — Recommended for Render (IPv4):**
+    Render's standard web services operate in an IPv4 environment. Select **Connection Pooling**, choose **Mode: Session**, and use port **`5432`**:
+    ```
+    postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+    ```
+    *Note:* Copy the actual host and pooler port (`5432`) directly from your Supabase Connect modal. Never fabricate the host or project reference.
+  - **Do NOT use the Transaction Pooler (Port 6543):**
+    Port `6543` connects to Supavisor in *Transaction Mode*. This mode is designed for ephemeral serverless functions (e.g. AWS Lambda / Vercel Edge). It breaks prepared statements and session-level state used by SQLAlchemy and psycopg in persistent Gunicorn application workers. Always use port `5432` (Direct or Session Pooler).
 
-  ```
-  postgresql://postgres.<ref>:<password>@<host>:6543/postgres
-  ```
-
-  Put this in `DATABASE_URL`. The app automatically upgrades `postgres://` /
-  `postgresql://` to the `postgresql+psycopg://` driver form.
+Put the selected URI in `DATABASE_URL`. The app automatically upgrades `postgres://` /
+`postgresql://` to the `postgresql+psycopg://` driver form.
 
 ## 3. Create the storage bucket
 
@@ -57,9 +64,12 @@ In your `.env` (or deployment secrets):
 ```ini
 FLASK_ENV=production
 SECRET_KEY=<a long random string>           # python -c "import secrets;print(secrets.token_hex(32))"
-DATABASE_URL=postgresql://postgres.<ref>:<password>@<host>:6543/postgres
+# Render / IPv4: Supabase Session Pooler (port 5432)
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+# Or Direct Connection (port 5432, if IPv6 supported):
+# DATABASE_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
 STORAGE_BACKEND=supabase
-SUPABASE_URL=https://<ref>.supabase.co
+SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SERVICE_KEY=<service_role key>
 SUPABASE_BUCKET=resources
 SUPABASE_SIGNED_URL_TTL=120
@@ -121,8 +131,9 @@ Or list the tables from the Supabase dashboard **Table Editor**.
 - **`Invalid production configuration`** — a required variable is missing; the
   error lists which (SECRET_KEY, DATABASE_URL non-SQLite, STORAGE_BACKEND,
   SUPABASE_*).
-- **DB connection refused / timeout** — check the host/port (use the pooling
-  URI, port `6543`), the password, and that your IP/platform is allowed.
+- **DB connection refused / timeout** — check the host and port (use port
+  `5432` with the Session Pooler or Direct Connection; do NOT use port `6543`),
+  verify the password, and ensure your deployment platform has network access.
 - **`Could not create signed URL`** — verify `SUPABASE_SERVICE_KEY` is the
   `service_role` key and `SUPABASE_BUCKET` matches the bucket name.
 - **Downloads 404/410** — the object key in `resource_files.storage_key` must

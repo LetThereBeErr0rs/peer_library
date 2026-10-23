@@ -51,7 +51,10 @@ class Config:
         "sqlite:///peer_library.db"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
 
     # --- Uploads / storage ---
     MAX_CONTENT_LENGTH = MAX_UPLOAD_BYTES

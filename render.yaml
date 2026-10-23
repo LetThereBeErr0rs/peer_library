@@ -6,8 +6,12 @@ services:
     runtime: python
     region: oregon # adjust to match your Supabase region if needed
     plan: free
-    buildCommand: pip install -r requirements.txt
-    preDeployCommand: flask db upgrade
+    # Note: Render's Free tier does not support 'preDeployCommand'. On the free plan,
+    # running migrations during buildCommand executes them safely once per build,
+    # with the configured environment variables, and halts deployment on error.
+    # If upgrading to a paid 'starter' plan, you can switch to:
+    # preDeployCommand: python -m flask --app app db upgrade
+    buildCommand: pip install -r requirements.txt && python -m flask --app app db upgrade
     startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT --access-logfile - app:app
     healthCheckPath: /healthz
     autoDeploy: true
@@ -16,6 +20,10 @@ services:
         value: production
       - key: SECRET_KEY
         generateValue: true
+      # In Render (IPv4 environment), use Supabase's Session Pooler (port 5432)
+      # or Direct Connection (port 5432 if IPv6 is supported).
+      # Do NOT use the Transaction Pooler (port 6543) for this persistent Gunicorn app.
+      # Obtain actual values from Supabase Dashboard -> Connect.
       - key: DATABASE_URL
         sync: false
       - key: STORAGE_BACKEND

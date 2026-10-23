@@ -33,7 +33,7 @@ Peer Library supports both a **unified local monolith** (for zero-dependency dev
 | **Backend API** | Flask 3.0.3 development server | Gunicorn 23 on **Render** (Python 3.12) |
 | **Database** | SQLite (`instance/peer_library.db`) | Managed PostgreSQL on **Supabase** |
 | **Object Storage** | Local filesystem (`uploads/`) | Private bucket on **Supabase Storage** |
-| **Migrations** | Flask-Migrate 4.0 (Alembic) | `flask db upgrade` (Render Pre-Deploy) |
+| **Migrations** | Flask-Migrate 4.0 (Alembic) | `flask db upgrade` (Render Build Command / Pre-Deploy) |
 | **Auth & Security** | Flask-Login, Flask-WTF, Flask-Limiter | Session cookies (Lax/Secure) + CSRF + Rate Limiting |
 | **Styling & Icons** | CSS3 custom properties, Bootstrap 5.3 CDN, Font Awesome 6 CDN, Inter Google Font |
 
@@ -200,7 +200,7 @@ The container runs as non-root user `appuser`, applies migrations once on startu
                      |   (Flask 3 + Gunicorn 23 Workers)     |
                      +---------+-------------------+---------+
                                |                   |
-            PostgreSQL (Port 6543)        Signed URLs (HTTPS)
+            PostgreSQL (Port 5432)        Signed URLs (HTTPS)
                                |                   |
                                v                   v
                      +-------------------+   +--------------------+
@@ -219,16 +219,22 @@ The container runs as non-root user `appuser`, applies migrations once on startu
 3. Click **New +** → **Blueprint**.
 4. Connect your GitHub repository. Render reads `render.yaml` automatically.
 5. In the environment configuration screen, fill in your secret variables:
-   - `DATABASE_URL`: Your Supabase connection string (use the pooling connection string, port `6543`).
-   - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://<ref>.supabase.co`).
+   - `DATABASE_URL`: Your Supabase connection string:
+     - **Render / IPv4:** Use Supabase's **Session Pooler** on port **`5432`** (`postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`).
+     - **Direct Connection:** Or Direct Connection on port **`5432`** (`postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres`) if direct IPv6 routing is supported.
+     - *Warning:* Do **not** use the Transaction Pooler (port `6543`) as it breaks prepared statements and session state in persistent Gunicorn workers. Obtain exact values from Supabase Dashboard **Connect**.
+   - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://<project-ref>.supabase.co`).
    - `SUPABASE_SERVICE_KEY`: Your Supabase `service_role` secret key.
    - `SUPABASE_BUCKET`: `resources`.
-6. Click **Apply**. Render will run `pip install`, execute migrations (`flask db upgrade`), start Gunicorn on `0.0.0.0:$PORT`, and monitor `/healthz`.
+6. Click **Apply**.
+   - **Free Plan Migration Strategy:** Render's Free plan does not support `preDeployCommand`. Migrations run safely during the build phase via `buildCommand: pip install -r requirements.txt && python -m flask --app app db upgrade`. This executes once per build on the build runner, utilizes the configured environment variables, avoids concurrent worker races, and halts deployment on error. (If upgrading to a paid **Starter** plan, you can switch to `preDeployCommand: python -m flask --app app db upgrade`).
+   - Render then starts Gunicorn on `0.0.0.0:$PORT` and monitors `/healthz`.
 
 ### Method B: Manual Web Service on Render
 - **Environment:** Python 3
-- **Build Command:** `pip install -r requirements.txt`
-- **Pre-Deploy Command:** `flask db upgrade`
+- **Plan:** Free (or Starter)
+- **Build Command:** `pip install -r requirements.txt && python -m flask --app app db upgrade`
+- **Pre-Deploy Command:** Leave blank on Free plan. (Only if using Starter plan: `python -m flask --app app db upgrade`).
 - **Start Command:** `gunicorn -w 4 -b 0.0.0.0:$PORT --access-logfile - app:app`
 - **Health Check Path:** `/healthz`
 - **Environment Variables:** Set according to the Environment Variables table below.
@@ -239,6 +245,9 @@ The container runs as non-root user `appuser`, applies migrations once on startu
 
 Peer Library's static frontend requires **zero build commands** and no Node.js compilation.
 
+> **Deployment Sequence Note:**  
+> Deploy your backend on Render **first** before deploying the frontend on Vercel. Render assigns your backend service a live URL upon provisioning (e.g. `https://peer-library-api.onrender.com` or `https://peer-library-api-xxxx.onrender.com`). You will need this actual URL to configure the Vercel proxy.
+
 1. Log into [Vercel Dashboard](https://vercel.com).
 2. Click **Add New...** → **Project** and import your Git repository.
 3. Configure the project:
@@ -246,18 +255,18 @@ Peer Library's static frontend requires **zero build commands** and no Node.js c
    - **Root Directory:** Either leave as repository root `./` (uses root `vercel.json`), or select `frontend` (uses `frontend/vercel.json`).
    - **Build Command:** Leave blank (no build step).
    - **Output Directory:** Leave blank.
-4. **Update the Proxy Destination:**
-   Open `vercel.json` (or `frontend/vercel.json`) and replace `https://YOUR-RENDER-BACKEND.onrender.com` with your real Render web service URL:
+4. **Update the Proxy Destination:**  
+   Open `vercel.json` (and `frontend/vercel.json`), locate the proxy rewrites, and replace `https://YOUR-RENDER-BACKEND.onrender.com` with your real Render web service URL:
    ```json
    {
      "rewrites": [
        {
          "source": "/api/:path*",
-         "destination": "https://peer-library-api.onrender.com/api/:path*"
+         "destination": "https://<your-service-name>.onrender.com/api/:path*"
        },
        {
          "source": "/download/:path*",
-         "destination": "https://peer-library-api.onrender.com/download/:path*"
+         "destination": "https://<your-service-name>.onrender.com/download/:path*"
        }
      ]
    }
@@ -278,13 +287,10 @@ See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for full screenshots and detailed ins
 
 In brief:
 1. Create a project at [supabase.com](https://supabase.com).
-2. Under **Project Settings → Database**, copy the **Transaction Connection Pooling** URI (port `6543`) into `DATABASE_URL`.
-3. Under **Project Settings → API**, copy `Project URL` to `SUPABASE_URL` and `service_role` secret to `SUPABASE_SERVICE_KEY`.
-4. Under **Storage → Buckets**, create a new bucket named `resources`. **Keep "Public bucket" disabled (OFF)**.
-5. Run migrations against Supabase:
-   ```bash
-   flask db upgrade
-   ```
+2. Under **Connect** (or *Project Settings → Database*), select **Connection Pooling** with mode **Session** (port `5432`), or **Direct Connection** (port `5432` if IPv6 supported). Copy the connection URI into `DATABASE_URL`. Do **not** use the Transaction Pooler (port `6543`).
+3. Under *Project Settings → API*, copy `Project URL` to `SUPABASE_URL` and `service_role` secret to `SUPABASE_SERVICE_KEY`.
+4. Under *Storage → Buckets*, create a new bucket named `resources`. **Keep "Public bucket" disabled (OFF)**.
+5. Run migrations against Supabase (handled automatically during Render `buildCommand`, or manually via `python -m flask --app app db upgrade`).
 
 ---
 
@@ -294,9 +300,9 @@ In brief:
 | :--- | :--- | :--- | :---: |
 | `FLASK_ENV` | Render | `production` | No |
 | `SECRET_KEY` | Render | Cryptographic random hex (`python -c "import secrets; print(secrets.token_hex(32))"`) | **YES** |
-| `DATABASE_URL` | Render | `postgresql://postgres.<ref>:<pass>@<host>:6543/postgres` | **YES** |
+| `DATABASE_URL` | Render | `postgresql://postgres.<project-ref>:<pass>@aws-0-<region>.pooler.supabase.com:5432/postgres` | **YES** |
 | `STORAGE_BACKEND` | Render | `supabase` (refuses to start with local storage in production) | No |
-| `SUPABASE_URL` | Render | `https://xyzproject.supabase.co` | No |
+| `SUPABASE_URL` | Render | `https://<project-ref>.supabase.co` | No |
 | `SUPABASE_SERVICE_KEY` | Render | `service_role` secret token (bypasses storage RLS server-side) | **YES** |
 | `SUPABASE_BUCKET` | Render | `resources` (must match private bucket name) | No |
 | `SUPABASE_SIGNED_URL_TTL` | Render | `120` (signed download URL expiry in seconds) | No |
