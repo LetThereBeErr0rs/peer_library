@@ -68,6 +68,24 @@ def create_app(config_class=None):
 
         return {"ALLOWED_MAX_MIB": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)}
 
+    # --- CORS preflight handling ---
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            origin = request.headers.get("Origin")
+            allowed = app.config.get("CORS_ALLOWED_ORIGINS", [])
+            if origin and origin in allowed:
+                response = app.make_response(("", 204))
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Headers"] = (
+                    "Content-Type, X-CSRFToken, X-CSRF-Token, X-Requested-With"
+                )
+                response.headers["Access-Control-Allow-Methods"] = (
+                    "GET, POST, PUT, DELETE, OPTIONS"
+                )
+                return response
+
     # --- security headers ---
     app.after_request(apply_security_headers)
 

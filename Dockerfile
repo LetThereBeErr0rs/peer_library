@@ -21,11 +21,12 @@ USER appuser
 
 EXPOSE 5000
 
-# Basic liveness check against the catalogue page.
+# Basic liveness check against the dedicated health endpoint.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/').status==200 else 1)"
+    CMD python -c "import urllib.request,sys,os; port=os.environ.get('PORT','5000'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{port}/healthz').status==200 else 1)"
 
 # The entrypoint applies migrations once, then starts Gunicorn. Debug mode is
 # never enabled here.
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--access-logfile", "-", "app:app"]
+CMD ["sh", "-c", "exec gunicorn -w 4 -b 0.0.0.0:${PORT:-5000} --access-logfile - app:app"]
+

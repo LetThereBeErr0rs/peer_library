@@ -66,6 +66,13 @@ def index():
     )
 
 
+@main_bp.route("/healthz")
+@main_bp.route("/api/health")
+def healthz():
+    """Lightweight health-check endpoint for Render / Docker orchestration."""
+    return jsonify({"status": "ok"}), 200
+
+
 @main_bp.route("/api/resources")
 def api_resources():
     """JSON listing/search used by the debounced search box."""
@@ -111,6 +118,64 @@ def resource_detail(resource_id):
     return render_template("resource_detail.html", resource=resource)
 
 
+@main_bp.route("/api/resources/<int:resource_id>")
+def api_resource_detail(resource_id):
+    """JSON resource detail endpoint for the static/decoupled frontend."""
+    resource = db.session.get(Resource, resource_id)
+    if not _can_view_resource(resource):
+        abort(404)
+    return jsonify(resource.to_dict(include_file=True))
+
+
+@main_bp.route("/api/resources", methods=["POST"])
+@login_required
+@limiter.limit("30 per hour", methods=["POST"])
+def api_create_resource():
+    """JSON/multipart upload endpoint for the static frontend."""
+    title = (request.form.get("title") or "").strip()
+    description = (request.form.get("description") or "").strip()
+    resource_type = (request.form.get("resource_type") or "notes").strip()
+    subject = (request.form.get("subject") or "").strip() or None
+    category = (request.form.get("category") or "").strip() or None
+    semester = (request.form.get("semester") or "").strip() or None
+    department = (request.form.get("department") or "").strip() or None
+    file_storage = request.files.get("file")
+
+    if not title:
+        return jsonify({"error": "Title is required."}), 400
+    if len(title) > 200:
+        return jsonify({"error": "Title cannot exceed 200 characters."}), 400
+    if not description:
+        return jsonify({"error": "Description is required."}), 400
+    if resource_type not in Resource.RESOURCE_TYPES:
+        return jsonify({"error": f"Invalid resource type. Choose from: {', '.join(Resource.RESOURCE_TYPES)}"}), 400
+
+    try:
+        resource = create_resource(
+            form_data={
+                "title": title,
+                "description": description,
+                "resource_type": resource_type,
+                "subject": subject,
+                "category": category,
+                "semester": semester,
+                "department": department,
+            },
+            uploader=current_user,
+            file_storage=file_storage,
+        )
+    except FileValidationError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except StorageError as exc:
+        log.error("Storage error during API upload: %s", exc)
+        return jsonify({"error": "The file could not be stored. Please try again."}), 502
+    except Exception:
+        log.exception("Unexpected error creating resource via API")
+        return jsonify({"error": "Something went wrong saving your resource."}), 500
+
+    return jsonify({"success": True, "resource": resource.to_dict(include_file=True)}), 201
+
+
 @main_bp.route("/contribute", methods=["GET", "POST"])
 @login_required
 @limiter.limit("30 per hour", methods=["POST"])
@@ -152,6 +217,7 @@ def contribute():
 
 
 @main_bp.route("/download/<int:file_id>")
+@main_bp.route("/api/download/<int:file_id>")
 def download(file_id):
     """Authorize by resource/file id, then serve. Never trusts a client path."""
     rf = db.session.get(ResourceFile, file_id)

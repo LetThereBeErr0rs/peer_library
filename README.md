@@ -1,95 +1,130 @@
 # Peer Library
 
-A student-to-student academic resource–sharing platform. Students can discover,
-search and download notes, past papers, syllabi and other study materials, and
-registered students can contribute their own resources with metadata.
+A student-to-student academic resource–sharing platform. Students can discover, search, filter, and download notes, past papers, syllabi, and other study materials. Registered students can contribute their own study resources with rich academic metadata and file attachments.
 
-Peer Library is a Flask monolith with server-rendered pages, a small JSON API
-for live search, and a pluggable storage layer so the same code runs on local
-SQLite + local files in development and on Supabase PostgreSQL + Supabase
-Storage in production.
+Peer Library supports both a **unified local monolith** (for zero-dependency development) and a **production-ready decoupled architecture**:
+- **Frontend:** Pure static HTML5, CSS3, vanilla ES6 JavaScript, Bootstrap 5.3, and Font Awesome 6 deployed to **Vercel** with same-origin API proxy rewrites.
+- **Backend:** Authoritative Python / Flask 3 API server running on **Render** under Gunicorn.
+- **Production Database:** Managed PostgreSQL on **Supabase** (with connection pooling).
+- **Production Storage:** Private **Supabase Storage** bucket with time-limited signed download URLs.
 
-## Key features
+---
 
-- **Catalogue-first homepage** — published resources are shown immediately,
-  with pagination; no search required.
-- **Real search & filters** — partial, case-insensitive search across title,
-  description, subject, category, author and roll number, plus type/subject
-  filters and sorting (newest, oldest, most downloaded, A–Z). Works with and
-  without JavaScript.
-- **Accounts** — registration, login/logout (Flask-Login), hashed passwords,
-  CSRF protection, rate limiting.
-- **Secure uploads** — server-side extension allowlist, 25 MiB limit, magic-byte
-  signature checks (incl. DOCX ZIP structure), randomized storage keys.
-- **Secure downloads** — served by file id with access control; Supabase uses
-  short-lived signed URLs from a private bucket.
-- **Safe rendering** — all user content is escaped (Jinja) or built with DOM
-  APIs (`textContent`), so stored-XSS payloads stay inert. URLs in text become
-  safe `http(s)` links only.
-- **Light/dark theme**, responsive layout, keyboard focus states and
-  reduced-motion support.
+## Key features & user journeys
+
+1. **Catalogue-first discovery** — Published resources appear immediately upon opening the platform; no query is required to browse materials.
+2. **Multi-attribute search & filtering** — Partial, case-insensitive keyword search across title, description, subject, category, author, and roll number, combined with resource type filters (notes, paper, book, syllabus, link, other) and sorting (newest, oldest, most downloaded, title A–Z).
+3. **Responsive pagination** — Clean pagination controls navigating results server-side or via JSON API.
+4. **Detailed resource inspection** — Dedicated detail views with formatted, linkified descriptions (safe `http(s)` anchor tags only), academic metadata, and uploader attribution.
+5. **Student accounts & session management** — Registration, login, and logout backed by secure scrypt password hashing (Werkzeug), Flask-Login session cookies, CSRF protection, and rate limiting.
+6. **Secure multipart uploads** — Strict server-side extension allowlist (`.pdf`, `.png`, `.jpg`, `.jpeg`, `.txt`, `.docx`), 25 MiB size enforcement, magic-byte MIME signature verification (including DOCX ZIP container validation), and randomized UUID-based storage keys.
+7. **Authorized, time-limited downloads** — Direct downloads checked against resource publication status and ownership. In production, downloads redirect to short-lived signed URLs from a private Supabase bucket.
+8. **Defensive security & anti-XSS** — All user content is escaped (Jinja2) or constructed with safe DOM APIs (`textContent`, `setAttribute`), neutralizing stored-XSS payloads. Security headers (CSP, nosniff, frame-ancestors deny, strict referrer policy) are attached to every response.
+9. **Dark & light theme** — Instant theme switching backed by `localStorage` without layout or color flicker on initial page load.
+10. **Graceful feedback states** — Informative empty states, loading indicators, field-level validation feedback, and toast alerts for all mutating actions.
+
+---
 
 ## Technology stack
 
-| Area        | Choice                                             |
-|-------------|----------------------------------------------------|
-| Backend     | Python 3.12, Flask 3, Gunicorn                     |
-| ORM / DB    | Flask-SQLAlchemy, SQLAlchemy 2, SQLite / PostgreSQL|
-| Migrations  | Flask-Migrate + Alembic                            |
-| Auth/forms  | Flask-Login, Flask-WTF (CSRF), Flask-Limiter       |
-| Storage     | Local filesystem (dev) / Supabase Storage (prod)   |
-| Frontend    | Jinja2, vanilla JS, Bootstrap 5.3, Font Awesome 6  |
+| Component | Local Development | Production Target |
+| :--- | :--- | :--- |
+| **Frontend** | Jinja2 templates or static HTML/JS | Vanilla HTML/CSS/JS on **Vercel** |
+| **Backend API** | Flask 3.0.3 development server | Gunicorn 23 on **Render** (Python 3.12) |
+| **Database** | SQLite (`instance/peer_library.db`) | Managed PostgreSQL on **Supabase** |
+| **Object Storage** | Local filesystem (`uploads/`) | Private bucket on **Supabase Storage** |
+| **Migrations** | Flask-Migrate 4.0 (Alembic) | `flask db upgrade` (Render Pre-Deploy) |
+| **Auth & Security** | Flask-Login, Flask-WTF, Flask-Limiter | Session cookies (Lax/Secure) + CSRF + Rate Limiting |
+| **Styling & Icons** | CSS3 custom properties, Bootstrap 5.3 CDN, Font Awesome 6 CDN, Inter Google Font |
+
+---
 
 ## Project structure
 
 ```
-app.py            Application factory + Gunicorn entrypoint (app:app) + CLI
-config.py         Environment-based configuration & production validation
-extensions.py     Shared extension instances (db, migrate, login, csrf, limiter)
-models.py         User, Resource, ResourceFile
-forms.py          WTForms (register, login, upload)
-auth.py           Auth blueprint (register/login/logout)
-views.py          Main blueprint (catalogue, search API, detail, upload, download)
-services.py       Resource querying + upload lifecycle
-storage.py        Local & Supabase storage backends
-validation.py     Server-side file validation (size, extension, signatures)
-security.py       Safe redirects, URL linkify, security headers
-migrate_legacy.py Import legacy SQLite content into the new schema
-init_db.py        Dev-only quick table creation (prefer `flask db upgrade`)
-migrations/       Alembic migration scripts
-templates/        Jinja templates
-static/           app.js, styles.css, theme-init.js
-tests/            pytest suite
+peer_library/
+├── frontend/                  # Static frontend ready for Vercel deployment
+│   ├── css/styles.css         # Theme tokens, glassmorphism, responsive grid
+│   ├── js/theme.js            # Instant theme initialization & toggle logic
+│   ├── js/api.js              # Centralized API client (CSRF, cookies, auth check)
+│   ├── js/app.js              # Catalogue live search, filters, pagination
+│   ├── js/resource.js         # Single resource detail loader & download handler
+│   ├── js/contribute.js       # Client-validated upload form with file preview
+│   ├── js/auth.js             # Login & registration forms
+│   ├── index.html             # Explore / Catalogue page
+│   ├── resource.html          # Resource detail view
+│   ├── contribute.html        # Resource submission form
+│   ├── login.html             # Login view
+│   ├── register.html          # Registration view
+│   └── vercel.json            # Vercel configuration (for Root Directory = frontend)
+├── migrations/                # Alembic migration versions and environment
+├── static/                    # Flask server-rendered static assets
+├── templates/                 # Server-rendered Jinja2 templates (dev monolith)
+├── tests/                     # 87 automated pytest regression & unit tests
+├── uploads/                   # Local file storage (development only)
+├── .dockerignore              # Excludes .venv, git, and local databases from containers
+├── .env.example               # Template environment configuration (placeholders only)
+├── .gitignore                 # Excludes .venv, instance/*.db, uploads/*, and secrets
+├── app.py                     # Application factory, CLI commands & Gunicorn entrypoint
+├── auth.py                    # Auth blueprint (HTML forms & JSON API endpoints)
+├── config.py                  # Environment-driven config & production startup validation
+├── deploy.sh                  # Docker Compose deployment convenience script
+├── docker-compose.yml         # Containerized local environment with named volumes
+├── Dockerfile                 # Production container image (Python 3.12-slim, non-root)
+├── entrypoint.sh              # Container startup script (runs migrations before server)
+├── extensions.py              # Shared SQLAlchemy, Migrate, Login, CSRF, Limiter singletons
+├── forms.py                   # WTForms validators for server-rendered routes
+├── init_db.py                 # Dev-only helper to inspect table creation
+├── migrate_legacy.py          # Idempotent importer for legacy sample SQLite data
+├── models.py                  # User, Resource, ResourceFile data models
+├── render.yaml                # Render Blueprint specification for native web service
+├── requirements.txt           # Pinned production and development dependencies
+├── security.py                # Safe redirect guards, URL linkify, security headers & CORS
+├── services.py                # Resource search queries and upload lifecycle
+├── storage.py                 # LocalStorage and SupabaseStorage adapters
+├── SUPABASE_SETUP.md          # Step-by-step remote database and storage setup guide
+├── validation.py              # Magic-byte MIME type and file-size verification
+├── vercel.json                # Root Vercel proxy configuration (API rewrite proxy)
+└── views.py                   # Main blueprint (catalogue, detail, uploads, downloads)
 ```
 
-## Prerequisites
+---
 
-- Python 3.11+ (3.12 recommended; the Docker image uses 3.12)
-- `pip` and `venv`
+## Local installation & setup
 
-## Local installation (Windows PowerShell)
+### Prerequisites
+- Python 3.11+ (3.12 recommended; Docker image uses 3.12-slim).
+- `git`, `pip`, and `venv`.
+- (Optional) Docker Desktop if running via containers.
+
+### Windows PowerShell
 
 ```powershell
-# From the project directory
+# 1. Clone repository and navigate to root
+cd c:\MyPrograms\peer_library\peer_library
+
+# 2. Create and activate a Python virtual environment
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
+# 3. Install pinned dependencies
 pip install -r requirements.txt
 
-# Configuration
+# 4. Set up environment configuration
 Copy-Item .env.example .env
-# Edit .env and set SECRET_KEY (a dev default exists but set your own).
+# Edit .env and set your SECRET_KEY (e.g., python -c "import secrets; print(secrets.token_hex(32))")
 
-# Create the database schema via migrations
+# 5. Apply database migrations to create local SQLite schema
 $env:FLASK_APP = "app"
 flask db upgrade
 
-# (Optional) import the legacy sample records
-python migrate_legacy.py --dry-run     # preview
-python migrate_legacy.py               # import
+# 6. (Optional) Import legacy sample records
+python migrate_legacy.py --dry-run     # Preview counts
+python migrate_legacy.py               # Import records
 
-# Run the development server
+# 7. Start the local Flask server
 python app.py
-# -> http://localhost:5000
+# -> Backend and server-rendered frontend running at http://localhost:5000
 ```
 
 ### macOS / Linux (bash)
@@ -101,99 +136,208 @@ pip install -r requirements.txt
 cp .env.example .env
 export FLASK_APP=app
 flask db upgrade
+python migrate_legacy.py
 python app.py
 ```
 
-## Database & migrations
+### Running the static frontend locally
 
-The schema is managed exclusively by Flask-Migrate — `db.create_all()` is not
-used as a production strategy and migrations are **not** run automatically by
-Gunicorn workers.
+To test the decoupled Vercel static frontend locally against your running Flask backend:
 
-```bash
-flask db migrate -m "describe change"   # generate (review before committing!)
-flask db upgrade                         # apply
-flask db downgrade                       # roll back one revision
+```powershell
+# In a separate terminal, serve the frontend directory:
+python -m http.server -d frontend 3000
+# Open http://localhost:3000 in your browser
 ```
+*(Ensure `CORS_ALLOWED_ORIGINS=http://localhost:3000` is set in your `.env` when connecting directly cross-origin).*
 
-- **Development** defaults to SQLite at `instance/peer_library.db`.
-- **Production** uses PostgreSQL via `DATABASE_URL` (see SUPABASE_SETUP.md).
-- Always review autogenerated migrations for destructive operations before
-  applying them to a real database.
+---
 
-## Legacy data migration
+## Running automated tests
 
-The original project's SQLite database (`instance/database.db`) is preserved
-untouched and treated as a read-only source. `migrate_legacy.py` imports its
-`content` rows into the new schema:
-
-- `--dry-run` previews counts and writes nothing (run this first).
-- Re-runs are idempotent (duplicates are skipped).
-- Missing attachments (e.g. the dangling `downloadfile.PDF`) are reported and
-  the resource is imported **without** a fabricated file.
-- Existing upload files are kept in place and referenced; the source database is
-  backed up before the run and never deleted.
-
-## Storage configuration
-
-- `STORAGE_BACKEND=local` (default): files under `UPLOAD_FOLDER` (`uploads/`).
-  Good for development; **not** for production (container filesystems are
-  ephemeral).
-- `STORAGE_BACKEND=supabase`: a private Supabase bucket with signed-URL
-  downloads. See SUPABASE_SETUP.md.
-
-## Running tests
+The test suite runs 87 automated tests using an in-memory SQLite database and isolated temporary storage:
 
 ```powershell
 $env:FLASK_ENV = "testing"
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Tests use an in-memory SQLite database and a temporary upload folder — no real
-credentials or external services are touched.
+---
 
-## Docker
+## Running with Docker locally
 
 ```bash
-cp .env.example .env            # set SECRET_KEY (and prod values if deploying)
-docker compose up -d --build    # http://localhost:5000
+docker compose up -d --build
+# Open http://localhost:5000
 docker compose logs -f web
 docker compose down
 ```
 
-The image runs as a non-root user, applies migrations once on startup via
-`entrypoint.sh` (set `RUN_MIGRATIONS=0` to skip when using a dedicated migration
-job), and runs Gunicorn (no debug mode). Local SQLite and uploads are kept in
-named volumes.
+The container runs as non-root user `appuser`, applies migrations once on startup via `entrypoint.sh`, binds to port `5000`, and preserves local data in named Docker volumes (`pl_instance`, `pl_uploads`).
 
-## Production configuration
+---
 
-Set in the environment (never commit secrets):
+## Production deployment architecture
 
-- `FLASK_ENV=production`
-- `SECRET_KEY` — a strong random value (startup fails on the dev default)
-- `DATABASE_URL` — PostgreSQL connection string
-- `STORAGE_BACKEND=supabase` and `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`,
-  `SUPABASE_BUCKET`
-- `SESSION_COOKIE_SECURE=true` (HTTPS)
+```
+                     +---------------------------------------+
+                     |            User Browser               |
+                     +-------------------+-------------------+
+                                         |
+                       https://peer-library.vercel.app
+                                         |
+                                         v
+                     +---------------------------------------+
+                     |            Vercel Frontend            |
+                     |   (Static HTML/CSS/JS + Proxy Cache)  |
+                     +-------------------+-------------------+
+                                         |
+                  /api/* and /download/* rewrites (Same-Origin)
+                                         |
+                                         v
+                     +---------------------------------------+
+                     |          Render Web Service           |
+                     |   (Flask 3 + Gunicorn 23 Workers)     |
+                     +---------+-------------------+---------+
+                               |                   |
+            PostgreSQL (Port 6543)        Signed URLs (HTTPS)
+                               |                   |
+                               v                   v
+                     +-------------------+   +--------------------+
+                     |  Supabase Postgres|   |  Supabase Storage  |
+                     |  (Relational Data)|   |  (Private Bucket)  |
+                     +-------------------+   +--------------------+
+```
 
-Production startup validates this configuration and refuses to run with an
-insecure secret key, SQLite, or missing storage credentials.
+---
 
-## Troubleshooting
+## 1. Backend deployment on Render
 
-- **`flask` not found** — activate the venv, or call `.\.venv\Scripts\flask.exe`.
-- **`RuntimeError: Invalid production configuration`** — set the required
-  production env vars listed above.
-- **Gunicorn on Windows** — Gunicorn is a Linux WSGI server; on Windows use
-  `python app.py` for development or run via Docker. Gunicorn is exercised in
-  the Linux container.
-- **Uploads rejected** — only `.pdf .png .jpg .jpeg .txt .docx` up to 25 MiB,
-  and the file contents must match the extension.
+### Method A: Using Render Blueprint (`render.yaml`) — Recommended
+1. Push your repository to your GitHub account (when ready).
+2. Log into [Render Dashboard](https://dashboard.render.com).
+3. Click **New +** → **Blueprint**.
+4. Connect your GitHub repository. Render reads `render.yaml` automatically.
+5. In the environment configuration screen, fill in your secret variables:
+   - `DATABASE_URL`: Your Supabase connection string (use the pooling connection string, port `6543`).
+   - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://<ref>.supabase.co`).
+   - `SUPABASE_SERVICE_KEY`: Your Supabase `service_role` secret key.
+   - `SUPABASE_BUCKET`: `resources`.
+6. Click **Apply**. Render will run `pip install`, execute migrations (`flask db upgrade`), start Gunicorn on `0.0.0.0:$PORT`, and monitor `/healthz`.
 
-## Known limitations
+### Method B: Manual Web Service on Render
+- **Environment:** Python 3
+- **Build Command:** `pip install -r requirements.txt`
+- **Pre-Deploy Command:** `flask db upgrade`
+- **Start Command:** `gunicorn -w 4 -b 0.0.0.0:$PORT --access-logfile - app:app`
+- **Health Check Path:** `/healthz`
+- **Environment Variables:** Set according to the Environment Variables table below.
 
-See the "Known limitations" section of the handoff report; in short: student
-identity is **unverified** (registering does not prove college affiliation),
-email delivery is not implemented, and remote Supabase integration ships as code
-+ setup docs but must be provisioned with your own project (see SUPABASE_SETUP.md).
+---
+
+## 2. Frontend deployment on Vercel
+
+Peer Library's static frontend requires **zero build commands** and no Node.js compilation.
+
+1. Log into [Vercel Dashboard](https://vercel.com).
+2. Click **Add New...** → **Project** and import your Git repository.
+3. Configure the project:
+   - **Framework Preset:** Other / None.
+   - **Root Directory:** Either leave as repository root `./` (uses root `vercel.json`), or select `frontend` (uses `frontend/vercel.json`).
+   - **Build Command:** Leave blank (no build step).
+   - **Output Directory:** Leave blank.
+4. **Update the Proxy Destination:**
+   Open `vercel.json` (or `frontend/vercel.json`) and replace `https://YOUR-RENDER-BACKEND.onrender.com` with your real Render web service URL:
+   ```json
+   {
+     "rewrites": [
+       {
+         "source": "/api/:path*",
+         "destination": "https://peer-library-api.onrender.com/api/:path*"
+       },
+       {
+         "source": "/download/:path*",
+         "destination": "https://peer-library-api.onrender.com/download/:path*"
+       }
+     ]
+   }
+   ```
+5. Click **Deploy**. Vercel publishes the static site on your global `.vercel.app` domain.
+
+> **Why the Vercel Proxy Rewrite is Superior:**  
+> The Vercel rewrite forwards `/api/*` and `/download/*` requests to Render at the edge. To the browser, all API calls and downloads are **same-origin**, which means:
+> - Flask session cookies work as standard first-party cookies with `SameSite=Lax`.
+> - CSRF tokens are validated seamlessly without browser cookie blocking.
+> - No cross-origin preflight latency on standard requests.
+
+---
+
+## 3. Supabase production database & storage
+
+See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for full screenshots and detailed instructions.
+
+In brief:
+1. Create a project at [supabase.com](https://supabase.com).
+2. Under **Project Settings → Database**, copy the **Transaction Connection Pooling** URI (port `6543`) into `DATABASE_URL`.
+3. Under **Project Settings → API**, copy `Project URL` to `SUPABASE_URL` and `service_role` secret to `SUPABASE_SERVICE_KEY`.
+4. Under **Storage → Buckets**, create a new bucket named `resources`. **Keep "Public bucket" disabled (OFF)**.
+5. Run migrations against Supabase:
+   ```bash
+   flask db upgrade
+   ```
+
+---
+
+## Environment variables reference
+
+| Variable | Platform | Example / Description | Secret? |
+| :--- | :--- | :--- | :---: |
+| `FLASK_ENV` | Render | `production` | No |
+| `SECRET_KEY` | Render | Cryptographic random hex (`python -c "import secrets; print(secrets.token_hex(32))"`) | **YES** |
+| `DATABASE_URL` | Render | `postgresql://postgres.<ref>:<pass>@<host>:6543/postgres` | **YES** |
+| `STORAGE_BACKEND` | Render | `supabase` (refuses to start with local storage in production) | No |
+| `SUPABASE_URL` | Render | `https://xyzproject.supabase.co` | No |
+| `SUPABASE_SERVICE_KEY` | Render | `service_role` secret token (bypasses storage RLS server-side) | **YES** |
+| `SUPABASE_BUCKET` | Render | `resources` (must match private bucket name) | No |
+| `SUPABASE_SIGNED_URL_TTL` | Render | `120` (signed download URL expiry in seconds) | No |
+| `SESSION_COOKIE_SECURE` | Render | `true` (enforces HTTPS-only cookies in production) | No |
+| `SESSION_COOKIE_SAMESITE` | Render | `Lax` (recommended with Vercel rewrite proxy) | No |
+| `CORS_ALLOWED_ORIGINS` | Render | `https://peer-library.vercel.app` (optional if using proxy) | No |
+
+---
+
+## End-to-end production smoke test
+
+Execute this verification procedure after deploying to Render, Vercel, and Supabase:
+
+1. **Verify Backend Health:**
+   ```bash
+   curl -i https://YOUR-RENDER-BACKEND.onrender.com/healthz
+   # Expect: HTTP/1.1 200 OK {"status":"ok"}
+   ```
+2. **Open Vercel Frontend:**
+   Navigate to `https://YOUR-APP.vercel.app`. The catalogue should render without errors, showing existing published resources or the empty catalogue state.
+3. **Register a Test Account:**
+   Click **Sign up**, enter name, email, and password. Verify immediate login and redirect to the catalogue with user menu displayed in the navbar.
+4. **Publish a Resource with Attachment:**
+   Click **Contribute**, fill in title, subject, category, description, and attach a valid `.pdf` or `.png` file (`<= 25 MiB`). Click **Add to Library**.
+5. **Verify Database Persistence:**
+   In your Supabase Dashboard **Table Editor**, confirm a new row appears in `resources` with matching `uploader_id`, and a row in `resource_files` with a generated UUID storage key.
+6. **Verify Storage Bucket:**
+   In Supabase Dashboard **Storage → resources**, confirm the file is stored under its UUID key.
+7. **Verify Download:**
+   On the resource detail page, click **Download**. Verify the server issues a 302 redirect to a signed Supabase URL and the file downloads cleanly.
+8. **Verify Search:**
+   Type a keyword from the title or subject into the search bar. Verify results filter dynamically within 300ms.
+9. **Verify Logout:**
+   Click **Log out**. Verify user session terminates and the contribute page redirects unauthenticated visitors to login.
+
+---
+
+## Operations & security guidelines
+
+- **Local vs. Production Storage:** Local storage (`uploads/`) is purely for development. Render web containers have ephemeral filesystems; all uploads will be lost on container restart unless `STORAGE_BACKEND=supabase` is configured.
+- **Fail-Fast Configuration Guard:** The backend application refuses to start in production if `SECRET_KEY` is default, `DATABASE_URL` is SQLite, or Supabase credentials are missing.
+- **Migration Management:** Never run `db.create_all()` in production. Always manage schema updates via `flask db migrate -m "..."` and apply them with `flask db upgrade`.
+- **Credential Protection:** `SUPABASE_SERVICE_KEY`, database passwords, and `SECRET_KEY` must **never** be included in frontend code, public repositories, or client-side JavaScript.
+- **Academic Identity Verification:** Student roll numbers and departments entered during registration are self-reported and explicitly displayed as **unverified**; registering an account does not verify institutional enrollment.

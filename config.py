@@ -66,9 +66,16 @@ class Config:
 
     # --- Sessions / cookies ---
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = _bool(os.environ.get("SESSION_COOKIE_SECURE"), default=False)
     PERMANENT_SESSION_LIFETIME = int(os.environ.get("SESSION_LIFETIME", "86400"))
+
+    # --- CORS (Explicit allowlist for decoupled frontends on Vercel) ---
+    CORS_ALLOWED_ORIGINS = [
+        o.strip()
+        for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        if o.strip()
+    ]
 
     # --- CSRF (Flask-WTF) ---
     WTF_CSRF_ENABLED = True

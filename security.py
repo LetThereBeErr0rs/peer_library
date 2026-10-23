@@ -85,4 +85,19 @@ def apply_security_headers(response):
         "frame-ancestors 'none'"
     )
     response.headers.setdefault("Content-Security-Policy", csp)
+
+    # Attach CORS headers if the request origin is in the explicit allowlist.
+    from flask import current_app
+
+    origin = request.headers.get("Origin")
+    allowed = current_app.config.get("CORS_ALLOWED_ORIGINS", [])
+    if origin and origin in allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, X-CSRFToken, X-CSRF-Token, X-Requested-With"
+        )
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS"
+        )
     return response
