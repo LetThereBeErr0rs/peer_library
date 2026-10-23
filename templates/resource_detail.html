@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ resource.title }} — Peer Library{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <a href="{{ url_for('main.index') }}" class="text-decoration-none">
+        <i class="fa-solid fa-arrow-left me-1" aria-hidden="true"></i> Back to catalogue
+    </a>
+</nav>
+
+<article class="glass-panel">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <span class="badge badge-type text-uppercase mb-2">{{ resource.resource_type }}</span>
+            {% if resource.status != 'published' %}
+            <span class="badge bg-warning text-dark mb-2">{{ resource.status }}</span>
+            {% endif %}
+            <h1 class="h3 fw-bold mb-1">{{ resource.title }}</h1>
+            <p class="text-muted mb-0">
+                <i class="fa-solid fa-user-graduate me-1" aria-hidden="true"></i>{{ resource.uploader_name }}
+                {% if resource.roll_number %}<span class="ms-2 small">· Roll no. {{ resource.roll_number }}
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">unverified</span></span>{% endif %}
+            </p>
+        </div>
+        <div class="text-md-end small text-muted">
+            <div><i class="fa-regular fa-clock me-1" aria-hidden="true"></i>
+                {{ resource.created_at.strftime('%d %b %Y') if resource.created_at else '' }}</div>
+            <div><i class="fa-solid fa-download me-1" aria-hidden="true"></i>{{ resource.download_count }} downloads</div>
+        </div>
+    </div>
+
+    <dl class="row small mb-3">
+        {% if resource.subject %}<dt class="col-sm-3">Subject</dt><dd class="col-sm-9">{{ resource.subject }}</dd>{% endif %}
+        {% if resource.category %}<dt class="col-sm-3">Category</dt><dd class="col-sm-9">{{ resource.category }}</dd>{% endif %}
+        {% if resource.department %}<dt class="col-sm-3">Department</dt><dd class="col-sm-9">{{ resource.department }}</dd>{% endif %}
+        {% if resource.semester %}<dt class="col-sm-3">Semester</dt><dd class="col-sm-9">{{ resource.semester }}</dd>{% endif %}
+    </dl>
+
+    <hr class="opacity-10">
+
+    <h2 class="h6 text-uppercase text-muted">Description</h2>
+    <div class="resource-description">{{ resource.description | linkify }}</div>
+
+    {% set pf = resource.primary_file %}
+    <div class="mt-4">
+        {% if pf %}
+        <a href="{{ url_for('main.download', file_id=pf.id) }}" class="btn btn-human">
+            <i class="fa-solid fa-download me-1" aria-hidden="true"></i>
+            Download {{ pf.original_filename }}
+        </a>
+        <span class="small text-muted ms-2">
+            {{ (pf.file_size / 1024) | round(1) }} KB · {{ pf.mime_type or 'file' }}
+        </span>
+        {% else %}
+        <div class="alert alert-secondary mb-0" role="status">
+            <i class="fa-regular fa-file-circle-xmark me-1" aria-hidden="true"></i>
+            No downloadable file is attached to this resource.
+        </div>
+        {% endif %}
+    </div>
+
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <hr class="opacity-10 mt-4">
+    <form method="POST" action="{{ url_for('main.admin_set_status', resource_id=resource.id) }}"
+        class="d-flex align-items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="status" class="small text-muted mb-0">Moderation:</label>
+        <select name="status" id="status" class="form-select form-select-sm w-auto">
+            {% for s in resource.STATUSES %}
+            <option value="{{ s }}" {% if resource.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Update</button>
+    </form>
+    {% endif %}
+</article>
+{% endblock %}

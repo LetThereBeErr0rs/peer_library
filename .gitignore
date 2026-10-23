@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local databases (keep them on disk, out of git)
+instance/*.db
+instance/*.backup.*.db
+*.sqlite3
+
+# Locally uploaded files (keep the folder, not the contents)
+uploads/*
+!uploads/.gitkeep
+
+# Logs & temp
+*.log
+tmp/
+.DS_Store

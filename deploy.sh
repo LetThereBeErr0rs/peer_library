@@ -1,17 +1,17 @@
 #!/bin/bash
+# Build and run Peer Library with Docker Compose.
+#
+# This replaces the original Amazon-Linux/EC2 bootstrap script, which assumed a
+# specific host that this project no longer targets. It is a thin convenience
+# wrapper around docker compose; see README.md and SUPABASE_SETUP.md for the
+# full production configuration (Supabase PostgreSQL + Storage).
+set -euo pipefail
 
-# Update packages
-sudo yum update -y
+if [ ! -f .env ]; then
+    echo "No .env found. Copy .env.example to .env and set SECRET_KEY (and, for"
+    echo "production, DATABASE_URL and the SUPABASE_* values) before deploying."
+fi
 
-# Install Docker
-sudo amazon-linux-extras install docker -y
-sudo service docker start
-sudo usermod -a -G docker ec2-user
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Build and Run Container
-# Assuming the code is already present in the directory
-sudo docker-compose up -d --build
+docker compose up -d --build
+echo "Peer Library is starting on http://localhost:5000"
+echo "Follow logs with: docker compose logs -f web"

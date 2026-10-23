@@ -210,8 +210,8 @@ h6 {
 }
 
 .card-snippet:hover {
-    transform: scale(1.02) rotate(1deg);
-    z-index: 10;
+    transform: translateY(-3px);
+    border-color: var(--primary);
     box-shadow: var(--shadow-lift);
 }
 
@@ -233,4 +233,92 @@ h6 {
 .bg-light {
     background-color: var(--input-bg) !important;
     color: var(--text-main) !important;
+}
+/* ---- Additions: catalogue, badges, accessibility, layout ---- */
+
+.site-footer {
+    background-color: var(--panel-bg);
+}
+
+.skip-link {
+    position: absolute;
+    left: 1rem;
+    top: 0.5rem;
+    z-index: 2000;
+    background: var(--primary);
+    color: #fff;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--radius-pill);
+}
+
+.nav-link.active {
+    color: var(--primary) !important;
+    font-weight: 600;
+}
+
+.search-icon {
+    z-index: 10;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.badge-type {
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.resource-title {
+    color: var(--text-main);
+    text-decoration: none;
+}
+
+.resource-title:hover {
+    color: var(--primary);
+}
+
+.resource-description {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-muted);
+}
+
+.resource-description a {
+    color: var(--primary);
+    word-break: break-all;
+}
+
+/* Visible keyboard focus everywhere. */
+a:focus-visible,
+button:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary) 50%, transparent);
+    outline-offset: 2px;
+}
+
+/* Keep cards from rotating / overflowing on small screens. */
+@media (max-width: 575.98px) {
+    .glass-panel {
+        padding: 1.25rem;
+    }
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    .card-snippet:hover,
+    .glass-panel:hover,
+    .btn-human:hover {
+        transform: none;
+    }
 }

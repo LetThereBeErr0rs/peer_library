@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Contribute — Peer Library{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <header class="text-center mb-4">
+            <h1 class="h2 fw-bold mb-2">Share a resource</h1>
+            <p class="text-muted">Contribute notes, papers or study material for your peers.</p>
+        </header>
+
+        <div class="glass-panel">
+            <form method="POST" action="{{ url_for('main.contribute') }}" enctype="multipart/form-data" novalidate
+                id="share-form">
+                {{ form.csrf_token }}
+                <div class="row g-3">
+                    <div class="col-12">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control", placeholder="e.g. DBMS Unit 3 Notes") }}
+                        {% for e in form.title.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.resource_type.label(class="form-label") }}
+                        {{ form.resource_type(class="form-select") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.subject.label(class="form-label") }}
+                        {{ form.subject(class="form-control", placeholder="e.g. Databases") }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.category.label(class="form-label") }}
+                        {{ form.category(class="form-control", placeholder="e.g. Unit notes") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.semester.label(class="form-label") }}
+                        {{ form.semester(class="form-control", placeholder="e.g. 4") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.department.label(class="form-label") }}
+                        {{ form.department(class="form-control", placeholder="e.g. CS") }}
+                    </div>
+                    <div class="col-12">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="5",
+                            placeholder="Describe the resource. You can paste notes or a link (e.g. https://…).") }}
+                        {% for e in form.description.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12">
+                        {{ form.file.label(class="form-label") }}
+                        {{ form.file(class="form-control", accept=".pdf,.png,.jpg,.jpeg,.txt,.docx") }}
+                        <div class="form-text">Optional. PDF, PNG, JPG, TXT or DOCX — up to {{ ALLOWED_MAX_MIB }} MiB.</div>
+                        {% for e in form.file.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12 text-center mt-2">
+                        <button type="submit" class="btn btn-human btn-lg" id="submit-btn">
+                            <i class="fa-solid fa-paper-plane me-2" aria-hidden="true"></i> Add to Library
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <p class="text-center text-muted small mt-3">
+            You are posting as <strong>{{ current_user.display_name }}</strong>.
+        </p>
+    </div>
+</div>
+{% endblock %}

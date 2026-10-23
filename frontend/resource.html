@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resource Details — Peer Library</title>
+    <meta name="description" content="View study material details, notes, and attachments on Peer Library.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <script src="js/theme.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+    <a class="visually-hidden-focusable skip-link" href="#main-content">Skip to content</a>
+
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" class="text-primary" aria-hidden="true">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                Peer Library
+            </a>
+
+            <div class="d-flex align-items-center gap-2 order-lg-3">
+                <button class="btn btn-toggle-theme" id="themeToggle" type="button"
+                    aria-label="Toggle light and dark theme">
+                    <i class="fa-solid fa-moon" id="themeIcon" aria-hidden="true"></i>
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fa-solid fa-compass me-1" aria-hidden="true"></i> Explore
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="contribute.html">
+                            <i class="fa-solid fa-upload me-1" aria-hidden="true"></i> Contribute
+                        </a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav align-items-lg-center" id="navAuthContainer">
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.html">Log in</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-human btn-sm ms-lg-2" href="register.html">Sign up</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main-content" class="container my-4 my-lg-5 flex-grow-1">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <a href="index.html" class="text-decoration-none">
+                <i class="fa-solid fa-arrow-left me-1" aria-hidden="true"></i> Back to catalogue
+            </a>
+        </nav>
+
+        <div id="resource-detail-container">
+            <div class="glass-panel text-center py-5">
+                <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
+                <p class="text-muted mt-2 small">Loading resource details…</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-4 mt-5 text-center text-muted border-top border-opacity-10 site-footer">
+        <div class="container">
+            <p class="mb-0 small">Peer Library — built by students, for students. Share notes, papers and study materials with your peers.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <script src="js/api.js"></script>
+    <script src="js/resource.js"></script>
+</body>
+
+</html>
